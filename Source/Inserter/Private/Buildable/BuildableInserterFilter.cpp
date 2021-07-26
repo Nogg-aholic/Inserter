@@ -68,6 +68,9 @@ bool ABuildableInserterFilter::Filter_ShouldIgnore(TSubclassOf<class UFGItemDesc
 
 void ABuildableInserterFilter::SyncBuildingProfiles()
 {
+	if(IsPendingKill())
+		return;
+	
 	FGBuildableArray.Remove(nullptr);
 	FGBuildableArray.Shrink();
 	TArray<FInserterBuildingProfile> Copy;

@@ -123,6 +123,7 @@ void AInserterSubsystem::TickInserters(float dt)
 		{
 			if (i->IsActorBeingDestroyed())
 			{
+				UE_LOG(LogTemp,Error, TEXT("Inserter was unregistered bc of IsActorBeingDestroyed"));
 				nInserter.Remove(i);
 				break;
 			}
@@ -133,7 +134,9 @@ void AInserterSubsystem::TickInserters(float dt)
 		}
 		else
 		{
+			UE_LOG(LogTemp,Error, TEXT("Inserter was unregistered for being Pending Kill"));
 			nInserter.Remove(i);
+			break;
 		}
 	}
 }

@@ -14,6 +14,9 @@ ABuildableInserter::ABuildableInserter()
 
 void ABuildableInserter::Factory_CollectInput_Implementation()
 {
+	if(IsPendingKill())
+		return;
+	
 	if (!mInputs.IsValidIndex(0) || bInputSwap || !HasAuthority())
 		return;
 
@@ -69,57 +72,62 @@ void ABuildableInserter::Factory_CollectInput_Implementation()
 void ABuildableInserter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if(IsPendingKill())
+		return;
+	
 	BeltTargetLocation = GetActorLocation();
 	// Both Server and Remote have their separate Update Arrays
-	AInserterSubsystem::Get(this->GetWorld())->RegisterInserter(this);
 	
-	if (!HasAuthority())
-		return;
-
-	if(mBufferInventory)
+	if (HasAuthority())
 	{
-		if (mBufferInventory->GetIsReplicated())
+		if(mBufferInventory)
 		{
-			UE_LOG(LogTemp, Error, TEXT("WAS REPLICATING"));
-			mBufferInventory->SetIsReplicated(false);
-		}
-		if (mBufferInventory->GetSizeLinear() != 4)
-		{
-			mBufferInventory->Resize(4);
-		}
-		// Inventory Slot Used for Connections will be 0 
-		FOR_EACH_ORDERED_FACTORY_INLINE_COMPONENTS(con)
-		{
+			if (mBufferInventory->GetIsReplicated())
+			{
+				UE_LOG(LogTemp, Error, TEXT("WAS REPLICATING"));
+				mBufferInventory->SetIsReplicated(false);
+			}
+			if (mBufferInventory->GetSizeLinear() != 4)
+			{
+				mBufferInventory->Resize(4);
+			}
+			// Inventory Slot Used for Connections will be 0 
+			FOR_EACH_ORDERED_FACTORY_INLINE_COMPONENTS(con)
+			{
 
-			if (con->GetDirection() == EFactoryConnectionDirection::FCD_INPUT)
-			{
-				mInputs.Add(con);
-				con->SetInventory(mBufferInventory);
-				con->SetInventoryAccessIndex(EInserter_ConveyorIn);
+				if (con->GetDirection() == EFactoryConnectionDirection::FCD_INPUT)
+				{
+					mInputs.Add(con);
+					con->SetInventory(mBufferInventory);
+					con->SetInventoryAccessIndex(EInserter_ConveyorIn);
+				}
+				else
+				{
+					mOutputs.Add(con);
+					con->SetInventory(mBufferInventory);
+					con->SetInventoryAccessIndex(EInserter_ConveyorOut);
+				}
 			}
-			else
+			
+			if (mBufferInventory)
 			{
-				mOutputs.Add(con);
-				con->SetInventory(mBufferInventory);
-				con->SetInventoryAccessIndex(EInserter_ConveyorOut);
+				mBufferInventory->AddArbitrarySlotSize(EInserter_ConveyorIn, BufferSize+1);
+				mBufferInventory->AddArbitrarySlotSize(EInserter_HoldingItem, GrabStackSize);
+				mBufferInventory->AddArbitrarySlotSize(EInserter_ConveyorOut, GrabStackSize);
+				mBufferInventory->AddArbitrarySlotSize(EInserter_DroppedItem, GrabStackSize);
 			}
-		}
-		
-		if (mBufferInventory)
-		{
-			mBufferInventory->AddArbitrarySlotSize(EInserter_ConveyorIn, BufferSize+1);
-			mBufferInventory->AddArbitrarySlotSize(EInserter_HoldingItem, GrabStackSize);
-			mBufferInventory->AddArbitrarySlotSize(EInserter_ConveyorOut, GrabStackSize);
-			mBufferInventory->AddArbitrarySlotSize(EInserter_DroppedItem, GrabStackSize);
 		}
 	}
+	AInserterSubsystem::Get(this->GetWorld())->RegisterInserter(this);
+
 }
 
 void ABuildableInserter::InserterTick(float dt)
 {
-	if (!netProp_Enabled)
+	if (!netProp_Enabled || IsPendingKill())
 		return;
-
+	
 	const bool bHost = HasAuthority();
 	switch (InserterState)
 	{
@@ -459,6 +467,9 @@ FInventoryItem ABuildableInserter::GrabFromOffset(AFGBuildableConveyorBelt * Bel
 int8 ABuildableInserter::GetPickupTarget()
 {
 
+	if(IsPendingKill())
+		return false;
+	
 	if (InputsInRange.Num() > 0)
 	{
 		int32 Ind = 0 ;
@@ -484,6 +495,10 @@ int8 ABuildableInserter::GetPickupTarget()
 // Function to check if we can Pickup Items NOW
 bool ABuildableInserter::CanExecutePickup()
 {
+
+	if(IsPendingKill())
+		return false;
+	
 	if (InputsInRange.IsValidIndex(SelectedInput) && GrabFromBuilding(InputsInRange[SelectedInput], false))
 		return true;
 	else
@@ -498,6 +513,8 @@ bool ABuildableInserter::CanExecutePickup()
 // Chooses a Valid Drop Target
 int32 ABuildableInserter::GetDropTarget()
 {
+	if(IsPendingKill())
+		return false;
 	if (OutputsInRange.Num() > 0)
 	{
 		int32 Ind = 0;
@@ -523,6 +540,8 @@ int32 ABuildableInserter::GetDropTarget()
 // Checks if we can actually Drop an Item NOW 
 bool ABuildableInserter::CanExecuteDrop()
 {
+	if(IsPendingKill())
+		return false;
 	// we need a Building set for this
 	if (OutputsInRange.IsValidIndex(SelectedOutput))
 	{
@@ -541,9 +560,11 @@ bool ABuildableInserter::CanExecuteDrop()
 	return false;
 }
 
-UFGInventoryComponent* ABuildableInserter::GetInventory()
+UFGInventoryComponent* ABuildableInserter::GetInventory() const
 {
-
+	if(IsPendingKill())
+		return nullptr;
+	
 	if (!HasAuthority())
 	{
 		return nullptr;
@@ -561,6 +582,8 @@ TSubclassOf<UFGRecipe> ABuildableInserter::GetBuiltWithRecipe(AFGBuildable* Buil
 
 bool ABuildableInserter::IsHoldingItem() const
 {
+	if(IsPendingKill())
+		return false;
 	if (HasAuthority())
 	{
 		if (mBufferInventory) { return mBufferInventory->IsSomethingOnIndex(EInserter_HoldingItem); }
@@ -572,6 +595,8 @@ bool ABuildableInserter::IsHoldingItem() const
 // FIN Function to set a Building as viable InputInRange
 bool ABuildableInserter::netFunc_addInput(AFGBuildable * BuildingTarget)
 {
+	if(IsPendingKill())
+		return false;
 	if (BuildingTarget)
 	{
 		if (InputsInRange.Contains(BuildingTarget))
@@ -592,6 +617,8 @@ bool ABuildableInserter::netFunc_addInput(AFGBuildable * BuildingTarget)
 // FIN FUNCTION to set a Building as viable Output
 bool ABuildableInserter::netFunc_addOutput(AFGBuildableFactory * BuildingTarget)
 {
+	if(IsPendingKill())
+		return false;
 	if (BuildingTarget)
 	{
 		if (OutputsInRange.Contains(BuildingTarget))
@@ -612,6 +639,8 @@ bool ABuildableInserter::netFunc_addOutput(AFGBuildableFactory * BuildingTarget)
 // FIN Function to directly set a Building as Input
 bool ABuildableInserter::netFunc_setSelectedInput(AFGBuildable * BuildingTarget)
 {
+	if(IsPendingKill())
+		return false;
 	if (!BuildingTarget)
 		return false;
 
@@ -627,6 +656,8 @@ bool ABuildableInserter::netFunc_setSelectedInput(AFGBuildable * BuildingTarget)
 // FIN Function to directly set a Building as Output
 bool ABuildableInserter::netFunc_setSelectedOutput(AFGBuildableFactory * BuildingTarget)
 {
+	if(IsPendingKill())
+		return false;
 	if (!BuildingTarget)
 		return false;
 

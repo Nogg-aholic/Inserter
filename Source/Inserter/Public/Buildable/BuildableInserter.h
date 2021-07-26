@@ -117,7 +117,7 @@ protected:
 	
 public:
 	UFUNCTION(BlueprintPure)
-	UFGInventoryComponent* GetInventory();
+	UFGInventoryComponent* GetInventory() const;
 
 	UFUNCTION(BlueprintPure)
 	static TSubclassOf<class UFGRecipe> GetBuiltWithRecipe(AFGBuildable* Building);

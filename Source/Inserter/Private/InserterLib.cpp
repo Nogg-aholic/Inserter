@@ -7,6 +7,8 @@
 
 #include "Buildable/BuildableInserterFilter.h"
 #include "Buildables/FGBuildableConveyorBelt.h"
+#include "Buildables/FGBuildableDockingStation.h"
+#include "Buildables/FGBuildableDroneStation.h"
 #include "Buildables/FGBuildableGeneratorNuclear.h"
 #include "Buildables/FGBuildableManufacturer.h"
 #include "Buildables/FGBuildableResourceExtractor.h"
@@ -36,6 +38,14 @@ UFGInventoryComponent* UInserterLib::TryGetOutputInventory(AFGBuildable* Buildin
 	else if (const AFGBuildableGeneratorFuel * BuildGen = Cast< AFGBuildableGeneratorFuel>(Building))
 	{
 		return BuildGen->GetFuelInventory();
+	}
+	else if(AFGBuildableDockingStation* DockingStation = Cast<AFGBuildableDockingStation>(Building))
+	{
+		return DockingStation->GetInventory();
+	}
+	else if(AFGBuildableDroneStation * DroneStation = Cast<AFGBuildableDroneStation>(Building))
+	{
+		return DroneStation->GetOutputInventory();
 	}
 	else if (const AFGBuildableFactory * BuildableFactory = Cast<AFGBuildableFactory>(Building))
 	{
@@ -74,6 +84,14 @@ UFGInventoryComponent* UInserterLib::TryGetInputInventory(AFGBuildable* Building
 	else if(AFGBuildableGeneratorFuel* Generator = Cast<AFGBuildableGeneratorFuel>(Building))
 	{
 		return Generator->GetFuelInventory();
+	}
+	else if(AFGBuildableDockingStation* DockingStation = Cast<AFGBuildableDockingStation>(Building))
+	{
+		return DockingStation->GetInventory();
+	}
+	else if(AFGBuildableDroneStation * DroneStation = Cast<AFGBuildableDroneStation>(Building))
+	{
+		return DroneStation->GetInputInventory();
 	}
 	else if (const AFGBuildableFactory * BuildableFactory = Cast<AFGBuildableFactory>(Building))
 	{

@@ -38,6 +38,12 @@ FInserterAnimation::FInserterAnimation(UInserterAnim * Building, AFGBuildable * 
 		// Target Location for Buildings always needs Inverse Transform 
 		// we move 200 cm UP again since the Building has its Pivot on the Ground
 		TargetLocation = Building->nOwner->GetActorTransform().InverseTransformPosition(BuildingTarget->GetActorLocation()+FVector(0,0,200.f));
+		float Len; FVector Dir;
+		TargetLocation.ToDirectionAndLength(Dir,Len);
+		if(Len > 900.f)
+		{
+			TargetLocation = Dir * 900.f;
+		}
 	}
 	else
 	{
